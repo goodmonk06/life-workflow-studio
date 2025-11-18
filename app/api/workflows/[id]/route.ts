@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { updateWorkflowSchema } from '@/lib/validations/workflow'
+import { successResponse, errorResponse, handleApiError } from '@/lib/api-response'
 
 // GET /api/workflows/[id] - ワークフロー詳細を取得
 export async function GET(
@@ -19,18 +21,12 @@ export async function GET(
     })
 
     if (!workflow) {
-      return NextResponse.json(
-        { error: 'Workflow not found' },
-        { status: 404 }
-      )
+      return errorResponse('Workflow not found', 404, 'NOT_FOUND')
     }
 
-    return NextResponse.json(workflow)
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    return successResponse(workflow)
+  } catch (error) {
+    return handleApiError(error)
   }
 }
 
@@ -42,24 +38,21 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, description, graph, isActive } = body
+    const validatedData = updateWorkflowSchema.parse(body)
 
     const workflow = await prisma.workflow.update({
       where: { id },
       data: {
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
-        ...(graph !== undefined && { graphJson: graph }),
-        ...(isActive !== undefined && { isActive }),
+        ...(validatedData.name !== undefined && { name: validatedData.name }),
+        ...(validatedData.description !== undefined && { description: validatedData.description }),
+        ...(validatedData.graph !== undefined && { graphJson: validatedData.graph }),
+        ...(validatedData.isActive !== undefined && { isActive: validatedData.isActive }),
       },
     })
 
-    return NextResponse.json(workflow)
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    return successResponse(workflow)
+  } catch (error) {
+    return handleApiError(error)
   }
 }
 
@@ -74,11 +67,8 @@ export async function DELETE(
       where: { id },
     })
 
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    return successResponse({ id, deleted: true })
+  } catch (error) {
+    return handleApiError(error)
   }
 }

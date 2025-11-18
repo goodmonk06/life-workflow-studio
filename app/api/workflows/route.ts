@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { createWorkflowSchema } from '@/lib/validations/workflow'
+import { successResponse, handleApiError } from '@/lib/api-response'
 
 // GET /api/workflows - 全ワークフローを取得
 export async function GET() {
@@ -14,12 +16,9 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json(workflows)
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    return successResponse(workflows)
+  } catch (error) {
+    return handleApiError(error)
   }
 }
 
@@ -27,22 +26,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, graph, isActive } = body
+    const validatedData = createWorkflowSchema.parse(body)
 
     const workflow = await prisma.workflow.create({
       data: {
-        name,
-        description,
-        graphJson: graph || { nodes: [], edges: [] },
-        isActive: isActive ?? false,
+        name: validatedData.name,
+        description: validatedData.description,
+        graphJson: validatedData.graph || { nodes: [], edges: [] },
+        isActive: validatedData.isActive,
       },
     })
 
-    return NextResponse.json(workflow, { status: 201 })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    return successResponse(workflow, 201)
+  } catch (error) {
+    return handleApiError(error)
   }
 }

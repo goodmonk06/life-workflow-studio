@@ -2,268 +2,415 @@
 
 個人用ワークフロー自動化スタジオ - n8n/Zapierタイプのビジュアルワークフローエディタ
 
-## 概要
+## Overview
 
 Life Workflow Studioは、ブラウザ上でノード＆エッジのワークフローをドラッグ&ドロップで作成・実行できる個人用自動化ツールです。
 
-### 主な機能
+### Key Features
 
 - 🎨 **ビジュアルエディタ**: React Flowベースの直感的なノードエディタ
-- ⚡ **豊富なノード**: Trigger、Action、Utilityの3カテゴリ
-- 🤖 **LLM統合**: OpenAI APIを使用したAI処理ノード
+- ⚡ **豊富なノード**: Trigger、Action、Utilityの3カテゴリ、7種類のノード
+- 🤖 **LLM統合**: OpenAI API統合による高度なテキスト処理
 - ⏰ **Cronスケジューラ**: 定期実行のサポート
-- 📊 **実行ログ**: ワークフロー実行の詳細な記録
-- 🔄 **拡張性**: 将来的に他のプロジェクトと連携可能
+- 📊 **実行ログ**: ワークフロー実行の詳細な記録とデバッグ
+- ✅ **型安全**: TypeScript + Zod による完全な型安全性
+- 🐳 **Docker対応**: Docker Composeで簡単にローカル環境を構築
+- 🧪 **テスト**: Vitest による包括的なテスト
 
-### サポートされるノード種別
+### Supported Node Types
 
 #### Trigger (トリガー)
 - **Manual Trigger**: 手動でワークフローを開始
-- **Cron Trigger**: スケジュールに基づいて自動実行
+- **Cron Trigger**: スケジュールに基づいて自動実行（cron式対応）
 
 #### Action (アクション)
-- **HTTP Request**: HTTPリクエストを送信
-- **Notification**: 通知を送信（Slack、Email、Webhook）
-- **LLM Action**: OpenAI APIでテキスト生成
+- **HTTP Request**: RESTful APIへのHTTPリクエスト送信
+- **Notification**: マルチチャネル通知（Slack、Email、Webhook）
+- **LLM Action**: OpenAI GPT-4o-mini/GPT-4oによるテキスト生成
 
 #### Utility (ユーティリティ)
-- **Delay**: 指定時間待機
-- **Branch**: 条件分岐
+- **Delay**: 指定時間待機（ミリ秒単位）
+- **Branch**: 条件分岐（JavaScriptの式評価）
 
-## 技術スタック
+## Tech Stack
 
-- **フロントエンド**: Next.js 16 (App Router) + TypeScript + Tailwind CSS
-- **ワークフローエディタ**: React Flow (@xyflow/react)
-- **バックエンド**: Next.js API Routes
-- **データベース**: PostgreSQL + Prisma ORM
+- **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind CSS
+- **Workflow Editor**: React Flow (@xyflow/react)
+- **Backend**: Next.js API Routes with Zod validation
+- **Database**: PostgreSQL + Prisma ORM
 - **AI**: OpenAI API
-- **スケジューラ**: node-cron
+- **Scheduler**: node-cron
+- **Testing**: Vitest + Testing Library
+- **Container**: Docker + Docker Compose
 
-## セットアップ
+## Domain Model
 
-### 前提条件
+### Core Entities
+
+```typescript
+Workflow
+├── id: string (cuid)
+├── name: string
+├── description: string?
+├── graphJson: JSON (nodes + edges)
+├── isActive: boolean
+└── runs: WorkflowRun[]
+
+WorkflowRun
+├── id: string (cuid)
+├── workflowId: string
+├── status: 'running' | 'completed' | 'failed'
+├── startedAt: DateTime
+├── finishedAt: DateTime?
+├── error: string?
+└── logs: WorkflowRunLog[]
+
+WorkflowRunLog
+├── id: string (cuid)
+├── runId: string
+├── nodeId: string
+├── nodeName: string?
+├── status: 'running' | 'success' | 'error'
+├── outputJson: JSON?
+├── error: string?
+└── createdAt: DateTime
+```
+
+## Getting Started
+
+### Requirements
 
 - Node.js 20以上
-- PostgreSQL 14以上
+- Docker & Docker Compose (推奨)
+- または PostgreSQL 14以上（ローカル開発の場合）
 - OpenAI APIキー（LLMノード使用時）
 
-### インストール手順
+### Quick Start with Docker (推奨)
 
-1. リポジトリをクローン:
+1. **リポジトリをクローン**:
 ```bash
 git clone <repository-url>
 cd life-workflow-studio
 ```
 
-2. 依存関係をインストール:
-```bash
-npm install
-```
-
-3. 環境変数を設定:
+2. **環境変数を設定**:
 ```bash
 cp .env.example .env
 ```
 
-`.env`ファイルを編集して、以下を設定:
-```
-DATABASE_URL="postgresql://username:password@localhost:5432/life_workflow_studio"
-OPENAI_API_KEY="sk-..."
+`.env`ファイルを編集:
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/life_workflow_studio?schema=public"
+OPENAI_API_KEY="sk-your-openai-api-key"  # Optional: LLM機能を使う場合
 ```
 
-4. データベースをセットアップ:
+3. **Docker Composeで起動**:
 ```bash
-npm run prisma:generate
-npm run prisma:migrate
+# 開発環境（DBのみ）
+docker compose -f docker-compose.dev.yml up -d
+
+# 依存関係をインストール
+npm install
+
+# Prismaクライアントを生成
+npm run db:generate
+
+# マイグレーションを実行
+npm run db:migrate
+
+# シードデータを投入
+npm run db:seed
+
+# 開発サーバーを起動
+npm run dev
 ```
 
-5. 開発サーバーを起動:
+4. **ブラウザでアクセス**:
+```
+http://localhost:3000
+```
+
+### Production Deployment with Docker
+
+```bash
+# 本番環境用イメージをビルド＆起動
+docker compose up -d
+
+# アプリケーションが起動
+# http://localhost:3000
+```
+
+### Local Development (Docker不使用)
+
+1. **PostgreSQLをインストール・起動**
+
+2. **依存関係をインストール**:
+```bash
+npm install
+```
+
+3. **環境変数を設定**:
+```bash
+cp .env.example .env
+# DATABASE_URLを自分のPostgreSQL接続情報に更新
+```
+
+4. **データベースをセットアップ**:
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+```
+
+5. **開発サーバーを起動**:
 ```bash
 npm run dev
 ```
 
-6. (オプション) Cronワーカーを起動:
+### Available Scripts
+
 ```bash
-npm run worker
+# 開発
+npm run dev              # 開発サーバーを起動（http://localhost:3000）
+npm run build            # 本番ビルド
+npm run start            # 本番サーバーを起動
+
+# テスト
+npm test                 # テストを実行
+npm run test:watch       # テストをwatchモードで実行
+
+# データベース
+npm run db:generate      # Prisma Clientを生成
+npm run db:migrate       # マイグレーションを実行
+npm run db:push          # スキーマをDBに反映（開発時）
+npm run db:seed          # サンプルデータを投入
+npm run db:studio        # Prisma Studioを起動（http://localhost:5555）
+npm run db:reset         # DBをリセット（全データ削除）
+
+# その他
+npm run lint             # ESLintを実行
+npm run worker           # Cronワーカーを起動
 ```
 
-アプリケーションは http://localhost:3000 で起動します。
+## Example Flow: Morning Task List
 
-## 使い方
+以下は実装済みのエンドツーエンドフローの例です。
 
-### ワークフローの作成
+### Scenario
+毎朝9時にAI生成されたタスクリストをSlackへ送信するワークフロー
 
-1. http://localhost:3000 にアクセス
-2. 「新規作成」ボタンをクリック
-3. ワークフロー名を入力して作成
-4. スタジオページでノードを追加・編集
+### Setup Steps
 
-### ノードの追加
+1. **ワークフローを作成**:
+   - http://localhost:3000 にアクセス
+   - 「新規作成」をクリック
+   - 名前: `朝のタスクリスト通知`
 
-1. 左サイドバーからノードを選択してクリック
-2. キャンバスにノードが追加される
-3. ノードをドラッグして配置
-4. ノードをクリックして右パネルで設定を編集
+2. **ノードを配置**:
+   - **Cron Trigger**: `0 9 * * *` (毎日9時)
+   - **LLM Action**: GPT-4o-miniで今日のタスクを生成
+   - **Notification**: Slackへ送信
 
-### ノードの接続
+3. **ノードを接続**:
+   - Cron Trigger → LLM Action → Notification
 
-1. ノードの下部（出力ハンドル）をドラッグ
-2. 別のノードの上部（入力ハンドル）にドロップ
-3. エッジ（線）で接続される
+4. **設定を保存してテスト実行**:
+   ```bash
+   # テスト実行
+   curl -X POST http://localhost:3000/api/workflows/{workflow-id}/run
 
-### 変数の使用
+   # ログを確認
+   npm run db:studio
+   ```
 
-前のノードの出力を参照するには、`{{nodeId.field}}`の形式を使用:
+### Demo Workflows
 
+シードデータには以下のデモワークフローが含まれています:
+
+1. **Daily Weather Check**: 天気APIからデータを取得して通知
+2. **朝のタスクリスト通知**: LLMでタスクを生成してSlack通知
+3. **Temperature Alert**: 温度をチェックして条件分岐
+
+デモワークフローを確認:
+```bash
+# シードデータを投入
+npm run db:seed
+
+# ブラウザで確認
+open http://localhost:3000
 ```
-例: {{http-request-1.data.message}}
-```
 
-### ワークフローの実行
-
-1. 「保存」ボタンで保存
-2. 「テスト実行」ボタンで即座に実行
-3. Cronトリガーを使用している場合、ワーカーが自動実行
-
-## チュートリアル: 毎朝のタスクリスト通知
-
-このチュートリアルでは、毎朝9時にSlackへ「今日やることリスト」を送るワークフローを作成します。
-
-### ステップ1: ワークフローの作成
-
-1. ワークフロー一覧ページで「新規作成」をクリック
-2. 名前: `朝のタスクリスト通知`
-3. 「作成」をクリック
-
-### ステップ2: Cronトリガーの追加
-
-1. 左サイドバーから「Cron Trigger」をクリック
-2. 右パネルで設定:
-   - Schedule: `0 9 * * *` (毎日9時)
-   - Timezone: `Asia/Tokyo`
-
-### ステップ3: LLMノードでタスクリスト生成
-
-1. 左サイドバーから「LLM Action」をクリック
-2. Cron Triggerノードと接続
-3. 右パネルで設定:
-   - Model: `gpt-4o-mini`
-   - System Prompt: `あなたは生産的なアシスタントです。`
-   - Prompt:
-     ```
-     今日の日付: {{trigger.timestamp}}
-
-     今日やるべきタスクのリストを3つ提案してください。
-     簡潔に箇条書きで出力してください。
-     ```
-   - Temperature: `0.7`
-
-### ステップ4: Notificationノードで通知
-
-1. 左サイドバーから「Notification」をクリック
-2. LLM Actionノードと接続
-3. 右パネルで設定:
-   - Channel: `slack`
-   - Recipient: `#general`
-   - Title: `今日のタスクリスト`
-   - Message: `{{llm-action-1.output}}`
-
-### ステップ5: 保存と実行
-
-1. 「保存」ボタンをクリック
-2. 「テスト実行」で動作確認
-3. ターミナルで `npm run worker` を実行してスケジューラを起動
-
-これで、毎朝9時にAI生成されたタスクリストがSlackに届きます！
-
-## プロジェクト構造
+## Project Structure
 
 ```
 life-workflow-studio/
 ├── app/                      # Next.js App Router
 │   ├── api/                  # API Routes
-│   │   ├── workflows/        # ワークフローCRUD
-│   │   └── runs/             # 実行ログ
+│   │   ├── workflows/        # ワークフローCRUD + 実行
+│   │   └── runs/             # 実行ログ取得
 │   ├── studio/[workflowId]/  # エディタページ
 │   └── workflows/            # 一覧ページ
 ├── components/               # Reactコンポーネント
 │   └── workflow-editor/      # エディタコンポーネント
-├── engine/                   # 実行エンジン
+├── engine/                   # ワークフロー実行エンジン
 │   ├── executor.ts           # メインエグゼキューター
 │   └── nodes/                # ノード実装
+│       ├── base.ts           # ベースクラス
+│       ├── triggers.ts       # Triggerノード
+│       ├── actions.ts        # Actionノード
+│       ├── llm.ts            # LLMノード
+│       └── utilities.ts      # Utilityノード
+├── lib/                      # ユーティリティ
+│   ├── prisma.ts             # Prismaシングルトン
+│   ├── api-response.ts       # 統一APIレスポンス
+│   └── validations/          # Zodバリデーション
 ├── prisma/                   # Prismaスキーマ
+│   ├── schema.prisma         # DBスキーマ
+│   └── seed.ts               # シードスクリプト
 ├── scripts/                  # ユーティリティスクリプト
 │   └── cron-worker.ts        # Cronワーカー
+├── tests/                    # テスト
+│   ├── validations.test.ts
+│   ├── api-response.test.ts
+│   └── node-executors.test.ts
 ├── types/                    # TypeScript型定義
-└── lib/                      # ユーティリティ
+│   └── workflow.ts           # ワークフロー型
+├── docker-compose.yml        # 本番環境
+├── docker-compose.dev.yml    # 開発環境（DBのみ）
+├── Dockerfile                # アプリコンテナ
+└── vitest.config.ts          # Vitestコンフィグ
 ```
 
-## データベーススキーマ
+## API Endpoints
 
-### Workflow
-- id: ワークフローID
-- name: 名前
-- description: 説明
-- graphJson: ノード・エッジ定義（JSON）
-- isActive: アクティブ状態
-- createdAt, updatedAt: タイムスタンプ
-
-### WorkflowRun
-- id: 実行ID
-- workflowId: ワークフローID
-- status: 実行状態（running, completed, failed）
-- startedAt, finishedAt: 実行時間
-- error: エラーメッセージ
-
-### WorkflowRunLog
-- id: ログID
-- runId: 実行ID
-- nodeId: ノードID
-- nodeName: ノード名
-- status: ステータス（running, success, error）
-- outputJson: 出力データ（JSON）
-- error: エラーメッセージ
-- createdAt: 作成日時
-
-## 開発
-
-### Prismaコマンド
+### Workflows
 
 ```bash
-# Prisma Clientを生成
-npm run prisma:generate
-
-# マイグレーションを実行
-npm run prisma:migrate
-
-# Prisma Studioを起動
-npm run prisma:studio
+GET    /api/workflows           # ワークフロー一覧を取得
+POST   /api/workflows           # 新規ワークフローを作成
+GET    /api/workflows/:id       # ワークフロー詳細を取得
+PUT    /api/workflows/:id       # ワークフローを更新
+DELETE /api/workflows/:id       # ワークフローを削除
+POST   /api/workflows/:id/run   # ワークフローを実行
 ```
 
-### デバッグ
-
-ワークフロー実行のログは、WorkflowRunLogテーブルに保存されます。
-Prisma Studioで確認可能:
+### Runs
 
 ```bash
-npm run prisma:studio
+GET /api/runs/:runId/logs  # 実行ログを取得
 ```
 
-## 今後の拡張計画
+### API Response Format
+
+```typescript
+// Success
+{
+  "success": true,
+  "data": { ... }
+}
+
+// Error
+{
+  "success": false,
+  "error": {
+    "message": "エラーメッセージ",
+    "code": "ERROR_CODE",
+    "details": { ... }
+  }
+}
+```
+
+## Variable Interpolation
+
+前のノードの出力を参照するには、`{{nodeId.field}}`の形式を使用:
+
+```javascript
+// 例: HTTPレスポンスから値を取得
+{{http-request-1.data.temperature}}
+
+// 例: LLMの出力をそのまま使用
+{{llm-action-1.output}}
+
+// 例: 変数を使用
+{{myVariable}}
+```
+
+## Testing
+
+```bash
+# 全テストを実行
+npm test
+
+# Watchモードで実行
+npm run test:watch
+
+# カバレッジを表示
+npm test -- --coverage
+```
+
+テスト内容:
+- ✅ Zodバリデーションスキーマ
+- ✅ APIレスポンスユーティリティ
+- ✅ ノードエグゼキューター（Delay、Branch）
+- ✅ エラーハンドリング
+
+## Debugging
+
+### Prisma Studio
+
+データベースの内容を可視化:
+
+```bash
+npm run db:studio
+# http://localhost:5555 にアクセス
+```
+
+### Workflow Logs
+
+実行ログの確認:
+
+1. Prisma Studioで`WorkflowRunLog`テーブルを表示
+2. または、API経由で取得:
+   ```bash
+   curl http://localhost:3000/api/runs/{runId}/logs
+   ```
+
+## Development Tips
+
+### 新しいノードタイプの追加
+
+1. `types/workflow.ts` に型定義を追加
+2. `lib/validations/workflow.ts` にバリデーションスキーマを追加
+3. `engine/nodes/` に実行ロジックを実装
+4. `engine/executor.ts` のexecutorsマップに登録
+5. `components/workflow-editor/NodeConfigPanel.tsx` に設定フォームを追加
+
+### Cron式の例
+
+```bash
+0 9 * * *       # 毎日9時
+*/15 * * * *    # 15分ごと
+0 0 * * 1       # 毎週月曜0時
+0 0 1 * *       # 毎月1日0時
+```
+
+## Future Extensions
 
 - [ ] より多くのノード種別（Database、File操作、など）
 - [ ] `automation-recipes-library`との連携
 - [ ] `unified-notification-hub`との統合
 - [ ] ワークフローテンプレート
-- [ ] 実行履歴の可視化
+- [ ] 実行履歴の可視化ダッシュボード
 - [ ] エラーリトライ機能
 - [ ] Webhook Trigger
 - [ ] 条件分岐の高度化（式評価ライブラリ）
+- [ ] マルチテナント対応
+- [ ] ワークフローのバージョン管理
 
-## ライセンス
-
-MIT
-
-## 貢献
+## Contributing
 
 プルリクエストを歓迎します！
+
+## License
+
+MIT
