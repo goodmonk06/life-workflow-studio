@@ -19,12 +19,52 @@ model Workflow {
   description String?
   graphJson   Json     // ノード・エッジのReact Flow定義
   isActive    Boolean  @default(false)
+  templateId  String?  // テンプレートから作成された場合
+  category    String?  // カテゴリ名
+  metadata    Json?    // 拡張用メタデータ
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   runs        WorkflowRun[]
+  tags        WorkflowTag[]
+  template    WorkflowTemplate? @relation("TemplateWorkflows", fields: [templateId], references: [id], onDelete: SetNull)
 
+  @@index([category])
+  @@index([isActive])
   @@map("workflows")
+}
+
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  graphJson   Json     // テンプレート定義
+  parameters  Json?    // パラメータ定義 {name, type, default, description}
+  isPublic    Boolean  @default(false)
+  usageCount  Int      @default(0)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workflows   Workflow[] @relation("TemplateWorkflows")
+
+  @@index([category])
+  @@index([isPublic])
+  @@map("workflow_templates")
+}
+
+model WorkflowTag {
+  id         String   @id @default(cuid())
+  workflowId String
+  tag        String
+  createdAt  DateTime @default(now())
+
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, tag])
+  @@index([tag])
+  @@map("workflow_tags")
 }
 
 model WorkflowRun {
